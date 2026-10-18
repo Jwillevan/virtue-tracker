@@ -11,8 +11,9 @@ android {
         applicationId = "com.devin.virtuetracker"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = 2
+        versionName = "1.1.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
@@ -34,6 +35,9 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.5.14"
@@ -57,4 +61,11 @@ dependencies {
     implementation("androidx.compose.material:material-icons-extended")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.13")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.1")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
 }

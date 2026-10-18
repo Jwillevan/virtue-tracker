@@ -47,7 +47,7 @@ class TrackerViewModel(private val repo: TrackerRepository) : ViewModel() {
 
     fun completedCount(): Int {
         completionVersion
-        return completions[key(selectedDate)]?.count { id -> items.any { it.id == id } } ?: 0
+        return completions[key(selectedDate)]?.count { id -> items.any { it.id == id && it.active } } ?: 0
     }
 
     fun toggle(itemId: String) {
@@ -69,21 +69,26 @@ class TrackerViewModel(private val repo: TrackerRepository) : ViewModel() {
 
     val isToday: Boolean get() = selectedDate == LocalDate.now()
 
-    fun addItem(name: String, description: String) {
+    fun addItem(name: String, description: String, subItems: List<String> = emptyList(), active: Boolean = true, completed: Boolean = false) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
-        items = items + TrackedItem(name = trimmed, description = description.trim())
+        val item = TrackedItem(name = trimmed, description = description.trim(), subItems = cleanSubItems(subItems), active = active)
+        items = items + item
         repo.saveItems(items)
+        if (completed) toggle(item.id)
     }
 
-    fun updateItem(id: String, name: String, description: String) {
+    fun updateItem(id: String, name: String, description: String, subItems: List<String>, active: Boolean, completed: Boolean) {
         val trimmed = name.trim()
         if (trimmed.isEmpty()) return
         items = items.map {
-            if (it.id == id) it.copy(name = trimmed, description = description.trim()) else it
+            if (it.id == id) it.copy(name = trimmed, description = description.trim(), subItems = cleanSubItems(subItems), active = active) else it
         }
         repo.saveItems(items)
+        if (isCompleted(id) != completed) toggle(id)
     }
+
+    private fun cleanSubItems(subItems: List<String>) = subItems.map { it.trim() }.filter { it.isNotEmpty() }
 
     fun deleteItem(id: String) {
         items = items.filterNot { it.id == id }

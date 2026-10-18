@@ -24,7 +24,11 @@ class TrackerRepository(context: Context) {
                     TrackedItem(
                         id = o.getString("id"),
                         name = o.getString("name"),
-                        description = o.optString("description", "")
+                        description = o.optString("description", ""),
+                        subItems = o.optJSONArray("subItems")?.let { children ->
+                            List(children.length()) { children.getString(it) }
+                        } ?: emptyList(),
+                        active = o.optBoolean("active", true)
                     )
                 )
             }
@@ -41,6 +45,8 @@ class TrackerRepository(context: Context) {
             o.put("id", item.id)
             o.put("name", item.name)
             o.put("description", item.description)
+            o.put("subItems", JSONArray(item.subItems))
+            o.put("active", item.active)
             arr.put(o)
         }
         prefs.edit().putString(KEY_ITEMS, arr.toString()).apply()

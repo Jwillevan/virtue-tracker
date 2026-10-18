@@ -9,7 +9,9 @@ import java.util.UUID
 data class TrackedItem(
     val id: String = UUID.randomUUID().toString(),
     val name: String,
-    val description: String = ""
+    val description: String = "",
+    val subItems: List<String> = emptyList(),
+    val active: Boolean = true
 )
 
 /**

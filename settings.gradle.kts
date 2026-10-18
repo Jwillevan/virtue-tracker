@@ -19,5 +19,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Franklin Virtue Tracker"
+rootProject.name = "Virtue Tracker"
 include(":app")

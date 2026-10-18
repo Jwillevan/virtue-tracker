@@ -1,53 +1,22 @@
 package com.devin.virtuetracker.ui
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ChevronLeft
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.Today
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -60,20 +29,21 @@ import java.time.format.FormatStyle
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrackerScreen(viewModel: TrackerViewModel) {
-    var showAddDialog by remember { mutableStateOf(false) }
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+    var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var editing by remember { mutableStateOf<TrackedItem?>(null) }
     var showMenu by remember { mutableStateOf(false) }
     var confirmReset by remember { mutableStateOf(false) }
-
-    val items = viewModel.items
+    val activeItems = viewModel.items.filter { it.active }
     val completed = viewModel.completedCount()
-    val total = items.size
-    val progress = if (total == 0) 0f else completed.toFloat() / total.toFloat()
+    val total = activeItems.size
+    val progress = if (total == 0) 0f else completed.toFloat() / total
+    val items = if (selectedTab == 0) activeItems else viewModel.items
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("13 Virtues") },
+                title = { Text("$completed / $total") },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     titleContentColor = MaterialTheme.colorScheme.onPrimary,
@@ -84,56 +54,56 @@ fun TrackerScreen(viewModel: TrackerViewModel) {
                         Icon(Icons.Default.MoreVert, contentDescription = "More options")
                     }
                     DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text("Jump to today") },
-                            onClick = { viewModel.goToToday(); showMenu = false }
-                        )
-                        DropdownMenuItem(
-                            text = { Text("Reset to Franklin's 13 virtues") },
-                            onClick = { confirmReset = true; showMenu = false }
-                        )
+                        DropdownMenuItem(text = { Text("Jump to today") }, onClick = {
+                            viewModel.goToToday(); showMenu = false
+                        })
+                        DropdownMenuItem(text = { Text("Reset to Franklin's 13 virtues") }, onClick = {
+                            confirmReset = true; showMenu = false
+                        })
                     }
                 }
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
-                Icon(Icons.Default.Add, contentDescription = "Add item")
+            if (selectedTab == 1) {
+                FloatingActionButton(
+                    onClick = { showAddDialog = true },
+                    modifier = Modifier.size(56.dp)
+                ) { Icon(Icons.Default.Add, contentDescription = "Add task") }
             }
         }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-        ) {
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier.fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp))
+            )
             DateHeader(
                 date = viewModel.selectedDate,
                 isToday = viewModel.isToday,
-                onPrev = { viewModel.goToPreviousDay() },
-                onNext = { viewModel.goToNextDay() },
-                onToday = { viewModel.goToToday() }
+                onPrev = viewModel::goToPreviousDay,
+                onNext = viewModel::goToNextDay,
+                onToday = viewModel::goToToday
             )
-            ProgressSection(completed = completed, total = total, progress = progress)
-
+            TabRow(selectedTabIndex = selectedTab) {
+                listOf("Overview", "Tasks").forEachIndexed { index, label ->
+                    Tab(selected = selectedTab == index, onClick = { selectedTab = index }, text = { Text(label) })
+                }
+            }
             if (items.isEmpty()) {
-                EmptyState()
+                Box(Modifier.fillMaxWidth().weight(1f).padding(24.dp), contentAlignment = Alignment.Center) {
+                    Text(if (selectedTab == 0) "No active tasks. Manage tasks on the Tasks tab."
+                         else "No tasks yet. Tap + to add one, or restore the default virtues from the menu.")
+                }
             } else {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                        start = 12.dp, end = 12.dp, top = 4.dp, bottom = 96.dp
-                    ),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 8.dp, bottom = 96.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(items, key = { it.id }) { item ->
-                        ItemRow(
-                            item = item,
-                            checked = viewModel.isCompleted(item.id),
-                            onToggle = { viewModel.toggle(item.id) },
-                            onEdit = { editing = item },
-                            onDelete = { viewModel.deleteItem(item.id) }
-                        )
+                        ItemRow(item, viewModel.isCompleted(item.id),
+                            onSelect = if (selectedTab == 1) ({ editing = item }) else null)
                     }
                 }
             }
@@ -142,44 +112,36 @@ fun TrackerScreen(viewModel: TrackerViewModel) {
 
     if (showAddDialog) {
         ItemEditorDialog(
-            title = "Add item",
-            initialName = "",
-            initialDescription = "",
-            onConfirm = { name, desc -> viewModel.addItem(name, desc); showAddDialog = false },
+            item = null,
+            completed = false,
+            date = viewModel.selectedDate,
+            onConfirm = { name, description, subItems, active, checked ->
+                viewModel.addItem(name, description, subItems, active, checked)
+                showAddDialog = false
+            },
             onDismiss = { showAddDialog = false }
         )
     }
-
     editing?.let { item ->
         ItemEditorDialog(
-            title = "Edit item",
-            initialName = item.name,
-            initialDescription = item.description,
-            onConfirm = { name, desc ->
-                viewModel.updateItem(item.id, name, desc); editing = null
+            item = item,
+            completed = viewModel.isCompleted(item.id),
+            date = viewModel.selectedDate,
+            onConfirm = { name, description, subItems, active, checked ->
+                viewModel.updateItem(item.id, name, description, subItems, active, checked)
+                editing = null
             },
+            onDelete = { viewModel.deleteItem(item.id); editing = null },
             onDismiss = { editing = null }
         )
     }
-
     if (confirmReset) {
         AlertDialog(
             onDismissRequest = { confirmReset = false },
             title = { Text("Reset list?") },
-            text = {
-                Text(
-                    "This replaces your current list with Benjamin Franklin's 13 virtues. " +
-                        "Your daily check-off history is kept."
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.resetToDefaultVirtues(); confirmReset = false
-                }) { Text("Reset") }
-            },
-            dismissButton = {
-                TextButton(onClick = { confirmReset = false }) { Text("Cancel") }
-            }
+            text = { Text("This replaces your current list with Benjamin Franklin's 13 virtues. Your daily check-off history is kept.") },
+            confirmButton = { TextButton(onClick = { viewModel.resetToDefaultVirtues(); confirmReset = false }) { Text("Reset") } },
+            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } }
         )
     }
 }
@@ -242,128 +204,83 @@ private fun DateHeader(
 }
 
 @Composable
-private fun ProgressSection(completed: Int, total: Int, progress: Float) {
-    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Completed today",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = "$completed / $total",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Bold
-            )
-        }
-        Spacer(Modifier.height(6.dp))
-        LinearProgressIndicator(
-            progress = { progress },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(8.dp)
-                .clip(RoundedCornerShape(4.dp))
-        )
-        Spacer(Modifier.height(8.dp))
-    }
-}
-
-@Composable
-private fun ItemRow(
-    item: TrackedItem,
-    checked: Boolean,
-    onToggle: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit
-) {
+private fun ItemRow(item: TrackedItem, checked: Boolean, onSelect: (() -> Unit)?) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier.fillMaxWidth().then(if (onSelect != null) Modifier.clickable(onClick = onSelect) else Modifier),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 4.dp, end = 4.dp, top = 4.dp, bottom = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Checkbox(checked = checked, onCheckedChange = { onToggle() })
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.name,
-                    style = MaterialTheme.typography.titleMedium,
+        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                if (checked) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                contentDescription = if (checked) "Completed" else "Not completed",
+                modifier = Modifier.padding(end = 12.dp).size(24.dp)
+            )
+            Column(Modifier.weight(1f)) {
+                Text(item.name, style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    textDecoration = if (checked) TextDecoration.LineThrough else TextDecoration.None
-                )
+                    textDecoration = if (checked) TextDecoration.LineThrough else TextDecoration.None)
                 if (item.description.isNotBlank()) {
-                    Text(
-                        text = item.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
+                    Text(item.description, style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f))
                 }
-            }
-            IconButton(onClick = onEdit) {
-                Icon(Icons.Default.Edit, contentDescription = "Edit ${item.name}")
-            }
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Delete ${item.name}")
+                item.subItems.forEach { Text("• $it", style = MaterialTheme.typography.bodySmall) }
+                if (!item.active) Text("Inactive", style = MaterialTheme.typography.labelMedium)
             }
         }
-    }
-}
-
-@Composable
-private fun EmptyState() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        Text(
-            "No items yet. Tap + to add one,\nor reset to Franklin's 13 virtues from the menu.",
-            style = MaterialTheme.typography.bodyMedium
-        )
     }
 }
 
 @Composable
 private fun ItemEditorDialog(
-    title: String,
-    initialName: String,
-    initialDescription: String,
-    onConfirm: (String, String) -> Unit,
-    onDismiss: () -> Unit
+    item: TrackedItem?,
+    completed: Boolean,
+    date: LocalDate,
+    onConfirm: (String, String, List<String>, Boolean, Boolean) -> Unit,
+    onDismiss: () -> Unit,
+    onDelete: (() -> Unit)? = null
 ) {
-    var name by remember { mutableStateOf(initialName) }
-    var description by remember { mutableStateOf(initialDescription) }
+    var name by rememberSaveable(item?.id) { mutableStateOf(item?.name ?: "") }
+    var description by rememberSaveable(item?.id) { mutableStateOf(item?.description ?: "") }
+    var subItems by rememberSaveable(item?.id) { mutableStateOf(item?.subItems?.joinToString("\n") ?: "") }
+    var active by rememberSaveable(item?.id) { mutableStateOf(item?.active ?: true) }
+    var checked by rememberSaveable(item?.id) { mutableStateOf(completed) }
+    var confirmDelete by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
+        title = { Text(if (item == null) "Add task" else "Edit task") },
         text = {
-            Column {
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
+            Column(Modifier.heightIn(max = 420.dp).verticalScroll(rememberScrollState())) {
+                OutlinedTextField(name, { name = it }, label = { Text("Name") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description (optional)") },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                OutlinedTextField(description, { description = it }, label = { Text("Description (optional)") }, modifier = Modifier.fillMaxWidth())
+                Spacer(Modifier.height(8.dp))
+                OutlinedTextField(subItems, { subItems = it }, label = { Text("Sub-items (one per line)") }, minLines = 2, maxLines = 5, modifier = Modifier.fillMaxWidth())
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (active) "Active" else "Inactive", Modifier.weight(1f))
+                    Switch(active, { active = it }, Modifier.semantics { contentDescription = "Task active" })
+                }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(checked, { checked = it }, Modifier.semantics { contentDescription = "Task completed" })
+                    Text("Completed on $date", Modifier.weight(1f))
+                }
+                if (onDelete != null) {
+                    TextButton(onClick = { confirmDelete = true }) { Text("Delete task", color = MaterialTheme.colorScheme.error) }
+                }
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = { onConfirm(name, description) },
-                enabled = name.isNotBlank()
-            ) { Text("Save") }
+            TextButton(onClick = { onConfirm(name, description, subItems.lines(), active, checked) }, enabled = name.isNotBlank()) { Text("Save") }
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancel") }
-        }
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } }
     )
+    if (confirmDelete && onDelete != null) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete task?") },
+            text = { Text("Delete this task and its completion history?") },
+            confirmButton = { TextButton(onClick = onDelete) { Text("Delete") } },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } }
+        )
+    }
 }
