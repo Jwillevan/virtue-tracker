@@ -1,1 +1,1 @@
-7e8144ef0f84a021c6de3be76c73a3117a94bd49aae161fb0ffbaf05572fa0dc  Virtue-Tracker-1.1.0-preview.apk
+656800f4409f2eea73667a27ef752fda1f6dded2cd12005458cc0fe53b3c3bf3  Virtue-Tracker-1.1.1-preview.apk

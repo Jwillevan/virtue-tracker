@@ -37,7 +37,7 @@ class TrackerScreenTest {
         compose.setContent { MaterialTheme { TrackerScreen(viewModel) } }
     }
 
-    @Test fun overviewIsReadOnlyAndEditingOwnsCompletionActivationAndDeletion() {
+    @Test fun overviewRestrictsEditingToTasksTabAndEditor() {
         open()
         compose.onNodeWithText("0 / 2").assertExists()
         compose.onNodeWithContentDescription("Add task").assertDoesNotExist()
@@ -64,6 +64,20 @@ class TrackerScreenTest {
         compose.onNodeWithText("Delete", useUnmergedTree = true).performClick()
         compose.onNodeWithText("Updated task").assertDoesNotExist()
         assertEquals(1, repo.loadItems().size)
+    }
+
+    @Test fun overviewIconTogglesCompletionAndProgressWithoutOpeningEditor() {
+        open()
+        compose.onNodeWithContentDescription("Mark Task 0 complete").performClick()
+        compose.onNodeWithText("1 / 2").assertExists()
+        compose.onNode(SemanticsMatcher.expectValue(SemanticsProperties.ProgressBarRangeInfo, ProgressBarRangeInfo(0.5f, 0f..1f))).assertExists()
+        compose.onNodeWithText("Edit task").assertDoesNotExist()
+        compose.onNodeWithText("Task 0").assertHasNoClickAction()
+        compose.onNodeWithContentDescription("Add task").assertDoesNotExist()
+        assertTrue(repo.loadCompletions().values.any { it.contains("task_0") })
+        compose.onNodeWithContentDescription("Mark Task 0 incomplete").performClick()
+        compose.onNodeWithText("0 / 2").assertExists()
+        assertTrue(repo.loadCompletions().values.none { it.contains("task_0") })
     }
 
     @Test fun addButtonKeepsItsSizeWithManyTasksAndInactiveItemsAreRetained() {

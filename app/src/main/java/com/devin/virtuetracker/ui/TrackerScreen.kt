@@ -1,6 +1,7 @@
 package com.devin.virtuetracker.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -15,6 +16,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -57,9 +59,11 @@ fun TrackerScreen(viewModel: TrackerViewModel) {
                         DropdownMenuItem(text = { Text("Jump to today") }, onClick = {
                             viewModel.goToToday(); showMenu = false
                         })
-                        DropdownMenuItem(text = { Text("Reset to Franklin's 13 virtues") }, onClick = {
-                            confirmReset = true; showMenu = false
-                        })
+                        if (selectedTab == 1) {
+                            DropdownMenuItem(text = { Text("Reset to Franklin's 13 virtues") }, onClick = {
+                                confirmReset = true; showMenu = false
+                            })
+                        }
                     }
                 }
             )
@@ -103,7 +107,8 @@ fun TrackerScreen(viewModel: TrackerViewModel) {
                 ) {
                     items(items, key = { it.id }) { item ->
                         ItemRow(item, viewModel.isCompleted(item.id),
-                            onSelect = if (selectedTab == 1) ({ editing = item }) else null)
+                            onSelect = if (selectedTab == 1) ({ editing = item }) else null,
+                            onToggle = if (selectedTab == 0) ({ viewModel.toggle(item.id) }) else null)
                     }
                 }
             }
@@ -204,18 +209,31 @@ private fun DateHeader(
 }
 
 @Composable
-private fun ItemRow(item: TrackedItem, checked: Boolean, onSelect: (() -> Unit)?) {
+private fun ItemRow(item: TrackedItem, checked: Boolean, onSelect: (() -> Unit)?, onToggle: (() -> Unit)?) {
     Card(
         modifier = Modifier.fillMaxWidth().then(if (onSelect != null) Modifier.clickable(onClick = onSelect) else Modifier),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(
-                if (checked) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
-                contentDescription = if (checked) "Completed" else "Not completed",
-                modifier = Modifier.padding(end = 12.dp).size(24.dp)
-            )
+            Box(
+                modifier = Modifier.padding(end = 12.dp).size(48.dp).then(
+                    if (onToggle != null) Modifier.toggleable(
+                        value = checked,
+                        role = Role.Checkbox,
+                        onValueChange = { onToggle() }
+                    ) else Modifier
+                ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    if (checked) Icons.Default.CheckCircle else Icons.Default.RadioButtonUnchecked,
+                    contentDescription = if (onToggle != null) {
+                        if (checked) "Mark ${item.name} incomplete" else "Mark ${item.name} complete"
+                    } else if (checked) "Completed" else "Not completed",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
             Column(Modifier.weight(1f)) {
                 Text(item.name, style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,

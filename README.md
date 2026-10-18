@@ -2,12 +2,12 @@
 
 Offline Android daily tracker, preloaded with Benjamin Franklin's 13 virtues. Native Kotlin and Jetpack Compose; all data stays in the app's existing SharedPreferences store.
 
-## Version 1.1.0
+## Version 1.1.1
 
-- Opens on **Overview**, a read-only list of active tasks and their daily completion status.
+- Opens on **Overview**, a list of active tasks. Tap the existing status icon to mark a task complete or incomplete for the selected day.
 - The **Tasks** tab contains all tasks, including inactive ones. Its + button stays 56 dp regardless of task count, and the list scrolls independently.
 - Tap a task to edit its name, description, sub-items (one per line), active switch, and completion for the selected date. Save applies changes; Cancel discards the draft. Delete is available inside the editor with confirmation.
-- No edit, delete, completion or activation buttons appear on individual task rows.
+- Overview has only the completion icon as a task action; names do not open an editor. Task management stays on the Tasks tab, whose rows open the editor.
 - The heading contains only the completed/active-total count, with a proportional progress bar. Inactive tasks do not count toward either number.
 - Date browsing, today navigation, the default virtue descriptions, reset behavior, theme and offline storage remain available.
 
@@ -29,7 +29,7 @@ With an Android emulator or authorized test device connected:
 .\gradlew.bat connectedDebugAndroidTest
 ```
 
-Tests cover legacy data, sub-items, activation and completion history, deletion/reset, read-only overview, popup editing and the fixed add button with 100 tasks. UI tests use isolated test tasks; run them on an emulator rather than a phone containing real planner data.
+Tests cover legacy data, sub-items, activation and completion history, deletion/reset, completion-only overview, popup editing and the fixed add button with 100 tasks. UI tests use isolated test tasks; run them on an emulator rather than a phone containing real planner data.
 
 ## Installation
 
